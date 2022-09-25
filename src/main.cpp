@@ -65,7 +65,10 @@ FurnaceCLI cli;
 String outName;
 String vgmOutName;
 String zsmOutName;
+String romOutName;
 String cmdOutName;
+
+int loops=1;
 int benchMode=0;
 int subsong=-1;
 DivAudioExportOptions exportOptions;
@@ -357,6 +360,13 @@ TAParamResult pOutput(String val) {
   return TA_PARAM_SUCCESS;
 }
 
+TAParamResult pROMOut(String val) {
+  romOutName=val;
+  e.setAudio(DIV_AUDIO_DUMMY);
+  return TA_PARAM_SUCCESS;
+}
+
+
 TAParamResult pVGMOut(String val) {
   vgmOutName=val;
   e.setAudio(DIV_AUDIO_DUMMY);
@@ -393,6 +403,7 @@ void initParams() {
   params.push_back(TAParam("D","direct",false,pDirect,"","set VGM export direct stream mode"));
   params.push_back(TAParam("Z","zsmout",true,pZSMOut,"<filename>","output .zsm data for Commander X16 Zsound"));
   params.push_back(TAParam("C","cmdout",true,pCmdOut,"<filename>","output command stream"));
+  params.push_back(TAParam("r","romout",true,pROMOut,"<filename>","output rom"));
   params.push_back(TAParam("L","loglevel",true,pLogLevel,"debug|info|warning|error","set the log level (info by default)"));
   params.push_back(TAParam("v","view",true,pView,"pattern|commands|nothing","set visualization (nothing by default)"));
   params.push_back(TAParam("i","info",false,pInfo,"","get info about a song"));
@@ -487,6 +498,7 @@ int main(int argc, char** argv) {
   outName="";
   vgmOutName="";
   zsmOutName="";
+  romOutName="";
   cmdOutName="";
 
   initParams();
@@ -679,8 +691,8 @@ int main(int argc, char** argv) {
     finishLogFile();
     return 0;
   }
-
-  if (outName!="" || vgmOutName!="" || cmdOutName!="") {
+  
+  if (outName!="" || vgmOutName!="" || romOutName!="" || cmdOutName!="") {
     if (cmdOutName!="") {
       SafeWriter* w=e.saveCommand();
       if (w!=NULL) {
@@ -711,6 +723,35 @@ int main(int argc, char** argv) {
         delete w;
       } else {
         reportError("could not write VGM!");
+      }
+    }
+    if (romOutName!="") {
+      // KLUDGE: assume one system
+      DivROMExportOptions exportOpt = DIV_ROM_ABSTRACT;
+      switch (e.song.system[0]) {
+        case DIV_SYSTEM_AMIGA:
+          exportOpt = DIV_ROM_AMIGA_VALIDATION;
+          break;
+        case DIV_SYSTEM_TIA:
+          exportOpt = DIV_ROM_ATARI_2600;
+          break;
+      };
+      logD("building ROM for %s", e.getSystemName(e.song.system[0]));
+      std::vector<DivROMExportOutput> out=e.buildROM(exportOpt);
+      if (romOutName[romOutName.size()-1]!=DIR_SEPARATOR) romOutName+=DIR_SEPARATOR_STR;
+      logD("export ROM %s", romOutName);
+      for (DivROMExportOutput& i: out) {
+        logD(" - %s", i.name);
+        String path=romOutName+i.name;
+        FILE* outFile=ps_fopen(path.c_str(),"wb");
+        if (outFile!=NULL) {
+          fwrite(i.data->getFinalBuf(),1,i.data->size(),outFile);
+          fclose(outFile);
+        } else {
+          reportError(fmt::sprintf("could not open file! (%s)",e.getLastError()));
+        }
+        i.data->finish();
+        delete i.data;
       }
     }
     if (outName!="") {

@@ -29,6 +29,8 @@ class DivEngine;
 enum DivROMExportOptions {
   DIV_ROM_ABSTRACT=0,
   DIV_ROM_AMIGA_VALIDATION,
+  DIV_ROM_ATARI_2600,
+  DIV_ROM_C64,
 
   DIV_ROM_MAX
 };
