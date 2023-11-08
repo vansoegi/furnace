@@ -17,250 +17,135 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "c64Export.h"
+#include "atari800Export.h"
 #include "registerDump.h"
 
 #include <fmt/printf.h>
 #include <set>
 #include "../../ta-log.h"
 
-const unsigned int FreqL0 = 0x00;
-const unsigned int FreqH0 = 0x01;
-const unsigned int PWL0 = 0x02;
-const unsigned int PWH0 = 0x03;
-const unsigned int Control0 = 0x04;
-const unsigned int AtkDcy0 = 0x05;
-const unsigned int StnRis0 = 0x06;
-const unsigned int FreqL1 = 0x07;
-const unsigned int FreqH1 = 0x08;
-const unsigned int PWL1 = 0x09;
-const unsigned int PWH1 = 0x0A;
-const unsigned int Control1 = 0x0B;
-const unsigned int AtkDcy1 = 0x0C;
-const unsigned int StnRis1 = 0x0D;
-const unsigned int FreqL2 = 0x0E;
-const unsigned int FreqH2 = 0x0F;
-const unsigned int PWL2 = 0x10;
-const unsigned int PWH2 = 0x11;
-const unsigned int Control2 = 0x12;
-const unsigned int AtkDcy2 = 0x13;
-const unsigned int StnRis2 = 0x14;
-const unsigned int FCL = 0x15;
-const unsigned int FCH = 0x16;
-const unsigned int FilterRes = 0x17;
-const unsigned int FilterMode = 0x18;
+const unsigned int AUDF1 = 0x00;
+const unsigned int AUDC1 = 0x01;
+const unsigned int AUDF2 = 0x02;
+const unsigned int AUDC2 = 0x03;
+const unsigned int AUDF3 = 0x04;
+const unsigned int AUDC3 = 0x05;
+const unsigned int AUDF4 = 0x06;
+const unsigned int AUDC4 = 0x07;
+const unsigned int AUDCTL = 0x08;
+const unsigned int SKCTL = 0x0f;
 
-std::map<unsigned int, unsigned int> sidVoice1FreqAddressMap = {
-  {FreqL0, 0},
-  {FreqH0, 1}
+std::map<unsigned int, unsigned int> pokeyChannel1AddressMap = {
+  {AUDF1, 0},
+  {AUDC1, 1}
+};
+std::map<unsigned int, unsigned int> pokeyChannel2AddressMap = {
+  {AUDF2, 0},
+  {AUDC2, 1}
+};
+std::map<unsigned int, unsigned int> pokeyChannel3AddressMap = {
+  {AUDF3, 0},
+  {AUDC3, 1}
+};
+std::map<unsigned int, unsigned int> pokeyChannel4AddressMap = {
+  {AUDF4, 0},
+  {AUDC4, 1}
+};
+std::map<unsigned int, unsigned int> pokeyControlAddressMap = {
+  {AUDCTL, 0},
+  {SKCTL, 1}
 };
 
-std::map<unsigned int, unsigned int> sidVoice1AddressMap = {
-  {PWL0, 0},
-  {PWH0, 1},
-  {Control0, 2},
-  {AtkDcy0, 3},
-  {StnRis0, 4}
-};
+struct PokeyVoiceRegisters {
 
-std::map<unsigned int, unsigned int> sidVoice2FreqAddressMap = {
-  {FreqL1, 0},
-  {FreqH1, 1}
-};
+  unsigned char audfx;
+  unsigned char audcx;
 
-std::map<unsigned int, unsigned int> sidVoice2AddressMap = {
-  {PWL1, 0},
-  {PWH1, 1},
-  {Control1, 2},
-  {AtkDcy1, 3},
-  {StnRis1, 4}
-};
-
-std::map<unsigned int, unsigned int> sidVoice3FreqAddressMap = {
-  {FreqL2, 0},
-  {FreqH2, 1}
-};
-
-std::map<unsigned int, unsigned int> sidVoice3AddressMap = {
-  {PWL2, 0},
-  {PWH2, 1},
-  {Control2, 2},
-  {AtkDcy2, 3},
-  {StnRis2, 4}
-};
-
-std::map<unsigned int, unsigned int> sidFilterAddressMap = {
-  {FCL, 0},
-  {FCH, 1},
-  {FilterRes, 2},
-  {FilterMode, 3}
-};
-
-
-struct SidVoiceFreqRegisters  {
-
-  unsigned char freqLx;
-  unsigned char freqHx;
-
-  SidVoiceFreqRegisters() {}
-
-  SidVoiceFreqRegisters(unsigned char c) : freqLx(c),freqHx(c) {}
+  PokeyVoiceRegisters() {}
+  PokeyVoiceRegisters(unsigned char c) : audfx(c), audcx(c) {}
 
   bool write(const unsigned int addr, const unsigned int value) {
     unsigned char val = value;
     switch (addr) {
       case 0:
-        if (val == freqLx) return false;
-        freqLx = val;
+        if (val == audfx) return false;
+        audfx = val;
         return true;
       case 1:
-        if (val == freqHx) return false;
-        freqHx = val;
+        if (val == audcx) return false;
+        audcx = val;
         return true;
     }
     return false;
   }
 
   uint64_t hash_interval(const char duration) {
-    return ((uint64_t)freqLx) +
-           (((uint64_t)freqHx) << 8) +
+    return ((uint64_t)audfx) +
+           (((uint64_t)audcx) << 8) +
            (((uint64_t)duration) << 16);
   }
 
 };
 
-struct SidVoiceRegisters {
+struct PokeyControlRegisters {
 
-  unsigned char pwLx;
-  unsigned char pwHx;
-  unsigned char controlx;
-  unsigned char atkDcyx;
-  unsigned char stnRisx;
+  unsigned char audctl;
+  unsigned char skctl;
 
-  SidVoiceRegisters() {}
-
-  SidVoiceRegisters(unsigned char c) : 
-    pwLx(c),
-    pwHx(c),
-    controlx(c),
-    atkDcyx(c),
-    stnRisx(c)
-  {}
+  PokeyControlRegisters() {}
+  PokeyControlRegisters(unsigned char c) : audctl(c), skctl(c) {}
 
   bool write(const unsigned int addr, const unsigned int value) {
     unsigned char val = value;
     switch (addr) {
       case 0:
-        if (val == pwLx) return false;
-        pwLx = val;
+        if (val == audctl) return false;
+        audctl = val;
         return true;
       case 1:
-        if (val == pwHx) return false;
-        pwHx = val;
-        return true;
-      case 2:
-        if (val == controlx) return false;
-        controlx = val;
-        return true;
-      case 3:
-        if (val == atkDcyx) return false;
-        atkDcyx = val;
-        return true;
-      case 4:
-        if (val == stnRisx) return false;
-        stnRisx = val;
-        return true;        
-    }
-    return false;
-  }
-
-  uint64_t hash_interval(const char duration) {
-    return(((uint64_t)pwLx)) +
-           (((uint64_t)pwHx) << 8) +
-           (((uint64_t)controlx) << 16) +
-           (((uint64_t)atkDcyx) << 24) +
-           (((uint64_t)stnRisx) << 32) +
-           (((uint64_t)duration) << 40);
-  }
-
-};
-
-struct SidFilterRegisters {
-
-  unsigned char fcL;
-  unsigned char fcH;
-  unsigned char filterRes;
-  unsigned char filterMode;
-
-  SidFilterRegisters() {}
-
-  SidFilterRegisters(char c) : fcL(0), fcH(0), filterRes(0), filterMode(0) {}
-
-  bool write(const unsigned int addr, const unsigned int value) {
-    unsigned char val = value;
-    switch (addr) {
-      case 0:
-        if (val == fcL) return false;
-        fcL = val;
-        return true;
-      case 1:
-        if (val == fcH) return false;
-        fcH = val;
-        return true;
-      case 2:
-        if (val == filterRes) return false;
-        filterRes = val;
-        return true;
-      case 3:
-        if (val == filterMode) return false;
-        filterMode = val;
+        if (val == skctl) return false;
+        skctl = val;
         return true;
     }
     return false;
   }
 
   uint64_t hash_interval(const char duration) {
-    return ((uint64_t)fcL) +  
-           (((uint64_t)fcH) << 8) + 
-           (((uint64_t)filterRes) << 16) +
-           (((uint64_t)filterMode) << 32) +
-           (((uint64_t)duration) << 40);
+    return ((uint64_t)audctl) +
+           (((uint64_t)skctl) << 8) +
+           (((uint64_t)duration) << 16);
   }
 
 };
 
 
-std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
+std::vector<DivROMExportOutput> DivExportAtari800::go(DivEngine* e) {
 
-  DivSystem targetSystem = DIV_SYSTEM_C64_6581;
-  
+  DivSystem targetSystem = DIV_SYSTEM_POKEY;
+
   // capture all sequences
   logD("performing sequence capture");
-  std::map<String, DumpSequence<SidVoiceFreqRegisters>> voiceFrequencies;
-  std::map<String, DumpSequence<SidVoiceRegisters>> voiceSequences;
-  std::map<String, DumpSequence<SidFilterRegisters>> filterSequences;
-  captureSequences(e, targetSystem, 0, sidVoice1FreqAddressMap, voiceFrequencies);
-  captureSequences(e, targetSystem, 1, sidVoice2FreqAddressMap, voiceFrequencies);
-  captureSequences(e, targetSystem, 2, sidVoice3FreqAddressMap, voiceFrequencies);
-  captureSequences(e, targetSystem, 0, sidVoice1AddressMap, voiceSequences);
-  captureSequences(e, targetSystem, 1, sidVoice2AddressMap, voiceSequences);
-  captureSequences(e, targetSystem, 2, sidVoice3AddressMap, voiceSequences);
-  captureSequences(e, targetSystem, 3, sidFilterAddressMap, filterSequences);
-  size_t complexFrequencies = 0;
-  for (auto& x: voiceFrequencies) {
-    if (x.second.intervals.size() > 1) {
-      complexFrequencies++;
-    }
-  }
-  logD("found %d voice frequencies, %d are complex", voiceFrequencies.size(), complexFrequencies);
-  size_t complexSequences = 0;
+  std::map<String, DumpSequence<PokeyVoiceRegisters>> voiceSequences;
+  std::map<String, DumpSequence<PokeyControlRegisters>> controlSequences;
+  captureSequences(e, targetSystem, 0, pokeyChannel1AddressMap, voiceSequences);
+  captureSequences(e, targetSystem, 1, pokeyChannel2AddressMap, voiceSequences);
+  captureSequences(e, targetSystem, 2, pokeyChannel3AddressMap, voiceSequences);
+  captureSequences(e, targetSystem, 3, pokeyChannel4AddressMap, voiceSequences);
+  captureSequences(e, targetSystem, 4, pokeyControlAddressMap, controlSequences);
+  size_t complexVoiceSequences = 0;
   for (auto& x: voiceSequences) {
     if (x.second.intervals.size() > 1) {
-      complexSequences++;
+      complexVoiceSequences++;
+    }
+  }
+  logD("found %d voice frequencies, %d are complex", voiceSequences.size(), complexVoiceSequences);
+  size_t complexControlSequences = 0;
+  for (auto& x: controlSequences) {
+    if (x.second.intervals.size() > 1) {
+      complexControlSequences++;
     }    
   }
-  logD("found %d voice sequences, %d are complex", voiceSequences.size(), complexSequences);
-  logD("found %d filter sequences", filterSequences.size());
+  logD("found %d control sequences, %d are complex", controlSequences.size(), complexControlSequences);
 
   // sequence frequency stats
   std::map<uint64_t, unsigned int> sequenceFrequency;
@@ -277,19 +162,9 @@ std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
     representativeSequenceMap);
   logD("found %d common voice sequences", commonVoiceSubSequences.size());
 
-  // compress the filter registers into common subsequences
-  logD("performing filter sequence compression");
-  std::map<uint64_t, String> commonFilterSubSequences;
-  findCommonSubsequences(
-    filterSequences,
-    commonFilterSubSequences,
-    sequenceFrequency,
-    representativeSequenceMap);
-  logD("found %d common filter sequences", commonFilterSubSequences.size());
-
   std::vector<DivROMExportOutput> ret;
   ret.reserve(1);
-  
+
   // create track data
   logD("writing track audio data");
   SafeWriter* w = new SafeWriter;
@@ -320,14 +195,14 @@ std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
   size_t songDataSize = 0;
   w->writeText("; songs\n");
   std::vector<PatternIndex> patterns;
-  bool alreadyAdded[4][256];
+  bool alreadyAdded[2][256];
   for (size_t i = 0; i < e->song.subsong.size(); i++) {
     w->writeText(fmt::sprintf("SONG_%d_ADDR\n", i));
     DivSubSong* subs = e->song.subsong[i];
-    memset(alreadyAdded, 0, 4*256*sizeof(bool));
+    memset(alreadyAdded, 0, 2*256*sizeof(bool));
     for (int j = 0; j < subs->ordersLen; j++) {
       w->writeText("    byte ");
-      for (int k = 0; k < 4; k++) {
+      for (int k = 0; k < e->getChannelCount(targetSystem); k++) {
         if (k > 0) {
           w->writeText(", ");
         }
@@ -403,22 +278,6 @@ std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
     voiceWaveformTableSize++;
   }
 
-  // emit filter waveform table
-  size_t filterWaveformTableSize = 0;
-  w->writeC('\n');
-  w->writeText("; Filter Waveform Lookup Table\n");
-  w->writeText(fmt::sprintf("NUM_FILTER_WAVEFORMS = %d\n", commonFilterSubSequences.size()));
-  w->writeText("WF_FILTER_TABLE_START_LO\n");
-  for (auto& x: commonFilterSubSequences) {
-    w->writeText(fmt::sprintf("%s = . - WF_FILTER_TABLE_START_LO\n", x.second.c_str()));
-    w->writeText(fmt::sprintf("   byte <%s_ADDR\n", x.second.c_str()));
-    filterWaveformTableSize++;
-  }
-  w->writeText("WF_FILTER_TABLE_START_HI\n");
-  for (auto& x: commonFilterSubSequences) {
-    w->writeText(fmt::sprintf("   byte >%s_ADDR\n", x.second.c_str()));
-    filterWaveformTableSize++;
-  }
 
   // emit voice waveforms
   size_t voiceWaveformDataSize = 0;
@@ -432,45 +291,16 @@ std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
     for (auto& n: dump.intervals) {
       w->writeText(
         fmt::sprintf(
-          "    byte %d,%d,%d,%d,%d,%d\n",
+          "    byte %d,%d,%d\n",
           n.duration,
-          n.state.pwLx,
-          n.state.pwHx,
-          n.state.controlx,
-          n.state.atkDcyx,
-          n.state.stnRisx
+          n.state.audfx,
+          n.state.audcx
         )
       );
-      voiceWaveformDataSize += 6;
+      voiceWaveformDataSize += 3;
     }
     w->writeText("    byte 255\n");
     voiceWaveformDataSize++;
-  }
-
-  // emit filter waveforms
-  size_t filterWaveformDataSize = 0;
-  w->writeC('\n');
-  w->writeText("; Filter Waveforms\n");
-  for (auto& x: commonFilterSubSequences) {
-    auto freq = sequenceFrequency[x.first];
-    w->writeText(fmt::sprintf("%s_ADDR\n", x.second.c_str()));
-    w->writeText(fmt::sprintf("; Hash %d, Freq %d\n", x.first, freq));
-    auto& dump = filterSequences[x.second];
-    for (auto& n: dump.intervals) {
-      w->writeText(
-        fmt::sprintf(
-          "    byte %d,%d,%d,%d,%d\n",
-          n.duration,
-          n.state.fcL,
-          n.state.fcH,
-          n.state.filterRes,
-          n.state.filterMode
-        )
-      );
-      filterWaveformDataSize += 5;
-    }
-    w->writeText("    byte 255\n");
-    filterWaveformDataSize++;
   }
 
   w->writeC('\n');
@@ -481,15 +311,15 @@ std::vector<DivROMExportOutput> DivExportC64::go(DivEngine* e) {
   w->writeText(fmt::sprintf("; Pattern Lookup Table Size %d\n", patternTableSize));
   w->writeText(fmt::sprintf("; Pattern Data Size %d\n", patternDataSize));
   w->writeText(fmt::sprintf("; Voice Waveform Table Size %d\n", voiceWaveformTableSize));
-  w->writeText(fmt::sprintf("; Filter Waveform Table Size %d\n", filterWaveformTableSize));
   w->writeText(fmt::sprintf("; Voice Waveform Data Size %d\n", voiceWaveformDataSize));
-  w->writeText(fmt::sprintf("; Filter Waveform Data Size %d\n", filterWaveformDataSize));
   size_t totalDataSize = 
     songTableSize + songDataSize + patternTableSize + 
-    patternDataSize + voiceWaveformTableSize + filterWaveformTableSize +
-    voiceWaveformDataSize + filterWaveformDataSize;
+    patternDataSize + voiceWaveformTableSize +
+    voiceWaveformDataSize;
   w->writeText(fmt::sprintf("; Total Data Size %d\n", totalDataSize));
 
+  logD("done creating track data");
+  
   ret.push_back(DivROMExportOutput("Track_data.asm", w));
 
   return ret;

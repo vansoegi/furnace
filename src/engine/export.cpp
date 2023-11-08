@@ -21,7 +21,10 @@
 
 #include "export/amigaValidation.h"
 #include "export/atari2600Export.h"
+#include "export/atari800Export.h"
+#include "export/bbcMicroExport.h"
 #include "export/c64Export.h"
+#include "export/nesExport.h"
 
 std::vector<DivROMExportOutput> DivEngine::buildROM(DivROMExportOptions sys) {
   DivROMExport* exporter=NULL;
@@ -35,6 +38,21 @@ std::vector<DivROMExportOutput> DivEngine::buildROM(DivROMExportOptions sys) {
     case DIV_ROM_C64:
       exporter=new DivExportC64;
       break;
+    case DIV_ROM_ATARI_800:
+      exporter=new DivExportAtari800;
+      break;
+    case DIV_ROM_BBC_MICRO:
+      exporter=new DivExportBBCMicro;
+      break;
+    case DIV_ROM_NES:
+      exporter=new DivExportNES;
+      break;
+    // case DIV_ROM_SMS:
+    //   exporter=new DivExportSMS;
+    //   break;
+    // case DIV_ROM_ZX_SPECTRUM:
+    //   exporter=new DivExportZXSpectrum;
+    //   break;
     default:
       exporter=new DivROMExport;
       break;

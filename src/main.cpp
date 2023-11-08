@@ -76,6 +76,7 @@ bool consoleMode=true;
 bool displayEngineFailError=false;
 bool cmdOutBinary=false;
 bool vgmOutDirect=false;
+bool infoCmd=false;
 
 std::vector<TAParam> params;
 
@@ -323,6 +324,11 @@ TAParamResult pCmdOut(String val) {
   return TA_PARAM_SUCCESS;
 }
 
+TAParamResult pInfo(String val) {
+  infoCmd = true;
+  return TA_PARAM_SUCCESS;
+}
+
 bool needsValue(String param) {
   for (size_t i=0; i<params.size(); i++) {
     if (params[i].name==param) {
@@ -350,6 +356,8 @@ void initParams() {
   params.push_back(TAParam("l","loops",true,pLoops,"<count>","set number of loops (-1 means loop forever)"));
   params.push_back(TAParam("s","subsong",true,pSubSong,"<number>","set sub-song"));
   params.push_back(TAParam("o","outmode",true,pOutMode,"one|persys|perchan","set file output mode"));
+
+  params.push_back(TAParam("i","info",false,pInfo,"","get info"));
 
   params.push_back(TAParam("B","benchmark",true,pBenchmark,"render|seek","run performance test"));
 
@@ -580,6 +588,12 @@ int main(int argc, char** argv) {
     finishLogFile();
     return 0;
   }
+  if (infoCmd) {
+    for (int i = 0; i < e.song.systemLen; i++) {
+      fmt::printf("%s | system: %s\n", fileName, e.getSystemName(e.song.system[i]));
+    }
+    return 0;
+  }
   if (outName!="" || vgmOutName!="" || romOutName!="" || cmdOutName!="") {
     if (cmdOutName!="") {
       SafeWriter* w=e.saveCommand(cmdOutBinary);
@@ -626,12 +640,26 @@ int main(int argc, char** argv) {
         case DIV_SYSTEM_C64_6581:
         case DIV_SYSTEM_C64_8580:
           exportOpt = DIV_ROM_C64;
-          exportOpt;
+          break;
+        case DIV_SYSTEM_POKEY:
+          // BUGBUG: TODO: multiple systems
+          exportOpt = DIV_ROM_ATARI_800; 
+          break;
+        case DIV_SYSTEM_SMS:
+          // BUGBUG: TODO: multiple systems
+          exportOpt = DIV_ROM_BBC_MICRO; 
+          break;
+        case DIV_SYSTEM_NES:
+          exportOpt = DIV_ROM_NES; 
+          break;
       };
-      std::vector<DivROMExportOutput> out=e.buildROM(exportOpt);
+      logD("building ROM");
+      std::vector<DivROMExportOutput> out = e.buildROM(exportOpt);
+      logD("writing ROM");
       if (romOutName[romOutName.size()-1]!=DIR_SEPARATOR) romOutName+=DIR_SEPARATOR_STR;
       for (DivROMExportOutput& i: out) {
         String path=romOutName+i.name;
+        logD("  ..%s", path);
         FILE* outFile=ps_fopen(path.c_str(),"wb");
         if (outFile!=NULL) {
           fwrite(i.data->getFinalBuf(),1,i.data->size(),outFile);

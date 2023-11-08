@@ -107,11 +107,13 @@ std::vector<DivROMExportOutput> DivExportAtari2600::go(DivEngine* e) {
  */
 void DivExportAtari2600::writeTrackData_CRD(DivEngine* e, SafeWriter *w) {
 
+  DivSystem targetSystem = DIV_SYSTEM_TIA;
+
   // capture all sequences
   logD("performing sequence capture");
   std::map<String, DumpSequence<TiaVoiceRegisters>> sequences;
-  captureSequences(e, DIV_SYSTEM_TIA, 0, channel0AddressMap, sequences);
-  captureSequences(e, DIV_SYSTEM_TIA, 1, channel1AddressMap, sequences);
+  captureSequences(e, targetSystem, 0, channel0AddressMap, sequences);
+  captureSequences(e, targetSystem, 1, channel1AddressMap, sequences);
 
   // compress the patterns into common subsequences
   logD("performing sequence compression");
@@ -153,7 +155,7 @@ void DivExportAtari2600::writeTrackData_CRD(DivEngine* e, SafeWriter *w) {
     memset(alreadyAdded, 0, 2*256*sizeof(bool));
     for (int j = 0; j < subs->ordersLen; j++) {
       w->writeText("    byte ");
-      for (int k = 0; k < e->getChannelCount(DIV_SYSTEM_TIA); k++) {
+      for (int k = 0; k < e->getChannelCount(targetSystem); k++) {
         if (k > 0) {
           w->writeText(", ");
         }

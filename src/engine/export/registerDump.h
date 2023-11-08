@@ -84,6 +84,39 @@ inline auto getPatternKey(unsigned short subsong, unsigned short channel, unsign
   );
 }
 
+// BUGBUG: use byte array
+/*
+template <unsigned int size>
+struct Registers {
+
+  unsigned char values[size];
+
+  bool write(unsigned int address, unsigned int value) {
+    if (address >= size) {
+      return false;
+    }
+    unsigned char v = value;
+    if (values[address] != v) {
+      values[address] = v;
+      return true;
+    }
+    return false;
+  }
+
+  uint64_t hash(char duration) {
+    if (size < 8) {
+      uint64_t h = duration;
+      for (int i = 0; i < size; i++) {
+        h = h << 8;
+        h += values[i];
+      }
+    }
+    return h;
+  }
+  
+}
+*/
+
 /**
  * Template struct comprised of captured register values combined with a Hz duration.
  */
