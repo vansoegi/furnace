@@ -29,7 +29,7 @@ std::vector<DivROMExportOutput> DivEngine::buildROM(DivROMExportOptions sys) {
       exporter=new DivExportAmigaValidation;
       break;
     case DIV_ROM_ATARI_2600:
-      exporter=new DivExportAtari2600;
+      exporter=new DivExportAtari2600(this);
       break;
     default:
       exporter=new DivROMExport;

@@ -91,6 +91,7 @@ bool safeModeWithAudio=false;
 bool infoMode=false;
 
 std::vector<TAParam> params;
+std::map<String, String> configOverrides;
 
 TAParamResult pHelp(String) {
   printf("usage: furnace [params] [filename]\n"
@@ -366,6 +367,29 @@ TAParamResult pROMOut(String val) {
   return TA_PARAM_SUCCESS;
 }
 
+TAParamResult pApplyConfOverride(String param) {
+    size_t eq = 0;
+    if ((eq = param.find("=")) == String::npos) {
+      return TA_PARAM_ERROR;
+    }
+    String key = param.substr(0, eq);
+    String value = param.substr(eq + 1);
+    configOverrides[key] = value;
+    return TA_PARAM_SUCCESS;
+}
+
+TAParamResult pApplyConfOverrides(String overrides) {
+  size_t last = 0;
+  size_t next = 0;
+  while ((next = overrides.find(",", last)) != String::npos) {
+    TAParamResult r = pApplyConfOverride(overrides.substr(last, next - last));
+    if (r != TA_PARAM_SUCCESS) {
+      return r;
+    }
+    last = next + 1;
+  }
+  return pApplyConfOverride(overrides.substr(last));
+}
 
 TAParamResult pVGMOut(String val) {
   vgmOutName=val;
@@ -404,6 +428,7 @@ void initParams() {
   params.push_back(TAParam("Z","zsmout",true,pZSMOut,"<filename>","output .zsm data for Commander X16 Zsound"));
   params.push_back(TAParam("C","cmdout",true,pCmdOut,"<filename>","output command stream"));
   params.push_back(TAParam("r","romout",true,pROMOut,"<filename>","output rom"));
+  params.push_back(TAParam("c","conf",true,pApplyConfOverrides,"<config>.","set config"));
   params.push_back(TAParam("L","loglevel",true,pLogLevel,"debug|info|warning|error","set the log level (info by default)"));
   params.push_back(TAParam("v","view",true,pView,"pattern|commands|nothing","set visualization (nothing by default)"));
   params.push_back(TAParam("i","info",false,pInfo,"","get info about a song"));
@@ -693,6 +718,13 @@ int main(int argc, char** argv) {
   }
   
   if (outName!="" || vgmOutName!="" || romOutName!="" || cmdOutName!="") {
+
+    // apply temporary config overrides
+    for (auto &pair : configOverrides) {
+      logI("config override [%s]=[%s]", pair.first, pair.second);
+      e.setConf(pair.first, pair.second);
+    }
+
     if (cmdOutName!="") {
       SafeWriter* w=e.saveCommand();
       if (w!=NULL) {
