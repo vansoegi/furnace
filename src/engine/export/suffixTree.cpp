@@ -552,7 +552,7 @@ void testCommonSubsequences(const String &input) {
     String key = input.substr(i, 1);
     sequence.emplace_back(key);
     representativeMap.emplace(key, key);
-    uint64_t hash = (u_int64_t)c;
+    uint64_t hash = (uint64_t)c;
     commonDumpSequences.emplace(hash, key);
   }
 
@@ -606,7 +606,7 @@ void testCV(const String &input) {
     String key = input.substr(i, 1);
     sequence.emplace_back(key);
     representativeMap.emplace(key, key);
-    uint64_t hash = (u_int64_t)c;
+    uint64_t hash = (uint64_t)c;
     commonDumpSequences.emplace(hash, key);
   }
 

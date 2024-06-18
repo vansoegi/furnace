@@ -147,7 +147,7 @@ std::vector<DivROMExportOutput> DivExportAtari2600::go(DivEngine* e) {
 
   // get register dump
   const size_t numSongs = e->song.subsong.size();
-  std::vector<RegisterWrite> registerWrites[numSongs];
+  std::vector<RegisterWrite>* registerWrites = new std::vector<RegisterWrite>[numSongs]();
   for (size_t subsong = 0; subsong < numSongs; subsong++) {
     registerDump(e, (int) subsong, registerWrites[subsong]);  
   }
@@ -177,6 +177,7 @@ std::vector<DivROMExportOutput> DivExportAtari2600::go(DivEngine* e) {
       break;
   }
 
+
   // create meta data (optional)
   logD("writing track title graphics");
   SafeWriter* titleData=new SafeWriter;
@@ -198,8 +199,9 @@ std::vector<DivROMExportOutput> DivExportAtari2600::go(DivEngine* e) {
   writeTextGraphics(titleData, title.c_str());
   ret.push_back(DivROMExportOutput("Track_meta.asm", titleData));
 
-  return ret;
+  delete registerWrites;
 
+  return ret;
 }
 
 void DivExportAtari2600::writeRegisterDump(
@@ -374,11 +376,13 @@ void DivExportAtari2600::writeTrackDataBasic(
   // dump sequences
   size_t sizeOfAllSequences = 0;
   size_t sizeOfAllSequencesPerChannel[2] = {0, 0};
-  ChannelStateSequence dumpSequences[numSongs][2];
+
+  ChannelStateSequence* dumpSequences = new ChannelStateSequence[numSongs * 2](); // was ChannelStateSequence dumpSequences[numSongs][2] == {{0, 1, ..., numSongs - 1}, {0, 1, ..., numSongs - 1}};
+
   for (size_t subsong = 0; subsong < numSongs; subsong++) {
     for (int channel = 0; channel < 2; channel++) {
       // limit to 1 frame per note
-      dumpSequences[subsong][channel].maxIntervalDuration = encodeDuration ? 8 : 1;
+      dumpSequences[subsong + channel * numSongs].maxIntervalDuration = encodeDuration ? 8 : 1;
       writeChannelStateSequence(
         registerWrites[subsong],
         (int) subsong,
@@ -386,9 +390,9 @@ void DivExportAtari2600::writeTrackDataBasic(
         0,
         -1,
         channel == 0 ? channel0AddressMap : channel1AddressMap,
-        dumpSequences[subsong][channel]
+        dumpSequences[subsong + channel * numSongs]
       );
-      size_t totalDataPointsThisSequence = dumpSequences[subsong][channel].size() + 1;
+      size_t totalDataPointsThisSequence = dumpSequences[subsong + channel * numSongs].size() + 1;
       sizeOfAllSequences += totalDataPointsThisSequence;
       sizeOfAllSequencesPerChannel[channel] += totalDataPointsThisSequence;
     }
@@ -443,7 +447,7 @@ void DivExportAtari2600::writeTrackDataBasic(
         trackData->writeText(fmt::sprintf("AUDIO_TRACK_%d = . - AUDIO_F%d + 1", subsong, channel));
       }
       size_t i = 0;
-      for (auto& n: dumpSequences[subsong][channel].intervals) {
+      for (auto& n: dumpSequences[subsong + channel * numSongs].intervals) {
         if (i % 16 == 0) {
           trackData->writeText("\n    byte ");
         } else {
@@ -474,7 +478,7 @@ void DivExportAtari2600::writeTrackDataBasic(
     for (size_t subsong = 0; subsong < numSongs; subsong++) {
       trackData->writeText(fmt::sprintf("    ; TRACK %d, CHANNEL %d", subsong, channel));
       size_t i = 0;
-      for (auto& n: dumpSequences[subsong][channel].intervals) {
+      for (auto& n: dumpSequences[subsong + channel * numSongs].intervals) {
         if (i % 16 == 0) {
           trackData->writeText("\n    byte ");
         } else {
@@ -504,6 +508,7 @@ void DivExportAtari2600::writeTrackDataBasic(
 
   ret.push_back(DivROMExportOutput("Track_data.asm", trackData));
 
+  delete dumpSequences;
 }
 
 // Compact delta encoding
@@ -920,7 +925,8 @@ void DivExportAtari2600::writeTrackDataTIAZip(
   size_t totalUncompressedBytes = 0;
   std::map<AlphaCode, size_t> frequencyMap;
   std::map<AlphaCode, std::map<AlphaCode, size_t>> branchMap;
-  std::vector<AlphaCode> codeSequences[e->song.subsong.size()][2];
+  size_t subSongSize = e->song.subsong.size();
+  std::vector<AlphaCode>* codeSequences = new std::vector<AlphaCode>[subSongSize * 2]; //std::vector<AlphaCode> codeSequences[e->song.subsong.size()][2];
   for (size_t subsong = 0; subsong < numSongs; subsong++) {
     for (int channel = 0; channel < 2; channel++) {
       // get channel states
@@ -953,15 +959,14 @@ void DivExportAtari2600::writeTrackDataTIAZip(
         totalUncompressedCodes += codeSeq.size();
         frequencyMap[c]++;
         branchMap[lastCode][c]++;
-        codeSequences[subsong][channel].emplace_back(c);
+        codeSequences[subsong + channel * subSongSize].emplace_back(c);
         lastCode = c;
         last = n.state;
       }
       totalUncompressedCodes++;
       frequencyMap[0]++;
       branchMap[lastCode][0]++;
-      codeSequences[subsong][channel].emplace_back(0);
-
+      codeSequences[subsong + channel * subSongSize].emplace_back(0);
       ret.push_back(DivROMExportOutput(fmt::sprintf("Track_binary.%d.%d.o", subsong, channel), binaryData));
     }
   }
@@ -1005,10 +1010,10 @@ void DivExportAtari2600::writeTrackDataTIAZip(
   for (size_t subsong = 0; subsong < e->song.subsong.size(); subsong++) {
     for (int channel = 0; channel < 2; channel += 1) {
       std::vector<AlphaChar> alphaSequence;
-      alphaSequence.reserve(codeSequences[subsong][channel].size());         
+      alphaSequence.reserve(codeSequences[subsong + channel * subSongSize].size());
 
       // copy string into alphabet
-      for (auto code : codeSequences[subsong][channel]) {
+      for (auto code : codeSequences[subsong + channel * subSongSize]) {
         AlphaChar c = index.at(code);
         alphaSequence.emplace_back(c);
       }
@@ -1093,7 +1098,7 @@ void DivExportAtari2600::writeTrackDataTIAZip(
           // encode span
           // logD("%d: encoding current %d - %d", lastSpanEnd, span.start, span.length);
           for (size_t i = span.start; i < span.start + span.length; i++) {
-            AlphaCode c = codeSequences[subsong][channel][i];
+              AlphaCode c = codeSequences[subsong + channel * subSongSize][i];
             labelMap[i] = compressedSequence.size();
             compressedSequence.emplace_back(c);
             // logD("%d: adding code %08x", i, c);
@@ -1129,7 +1134,7 @@ void DivExportAtari2600::writeTrackDataTIAZip(
         if (type == CODE_TYPE::POP) {
           AlphaCode codeJump = *it;
           if (codeJump == 0) {
-            AlphaCode x = codeSequences[subsong][channel][j];
+            AlphaCode x = codeSequences[subsong + channel * subSongSize][j];
             if (c != x) {
               logD("%d: %08x = %08x (%d)", i, c, x, j);
               logD("fail at end %d", i);
@@ -1148,7 +1153,7 @@ void DivExportAtari2600::writeTrackDataTIAZip(
           i = l;
           
         } else {
-          AlphaCode x = codeSequences[subsong][channel][j];
+          AlphaCode x = codeSequences[subsong + channel * subSongSize][j];
           if (c != x) {
             logD("%d: %08x = %08x (%d)", i, c, x, j);
             logD("fail at %d", i);
@@ -1226,6 +1231,8 @@ void DivExportAtari2600::writeTrackDataTIAZip(
       totalSpans += spans.size();
       totalJumps += jumpStream.size();
 
+      // clean up
+      delete codeSequences;
       delete root;
 
     }
