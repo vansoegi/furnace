@@ -199,7 +199,7 @@ std::vector<DivROMExportOutput> DivExportAtari2600::go(DivEngine* e) {
   writeTextGraphics(titleData, title.c_str());
   ret.push_back(DivROMExportOutput("Track_meta.asm", titleData));
 
-  delete registerWrites;
+  delete[] registerWrites;
 
   return ret;
 }
@@ -304,7 +304,7 @@ void DivExportAtari2600::writeTrackDataRaw(
         }
       } else {
         for (auto& n: dumpSequence.intervals) {
-          for (size_t i = n.duration; i > 0; i++) {
+          for (size_t i = n.duration; i > 0; i--) {
             trackData->writeText(fmt::sprintf("    byte %d, %d, %d\n",
               n.state.registers[0],
               n.state.registers[1],
@@ -508,7 +508,7 @@ void DivExportAtari2600::writeTrackDataBasic(
 
   ret.push_back(DivROMExportOutput("Track_data.asm", trackData));
 
-  delete dumpSequences;
+  delete[] dumpSequences;
 }
 
 // Compact delta encoding
@@ -1232,7 +1232,7 @@ void DivExportAtari2600::writeTrackDataTIAZip(
       totalJumps += jumpStream.size();
 
       // clean up
-      delete codeSequences;
+      delete[] codeSequences;
       delete root;
 
     }
